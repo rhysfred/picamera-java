@@ -1,4 +1,4 @@
-project('rpicam-astreampps', 'c', 'cpp',
+project('picamera-java', 'c', 'cpp',
         meson_version : '>= 0.64.0',
         version : '1.0.0',
         default_options : [
@@ -8,6 +8,8 @@ project('rpicam-astreampps', 'c', 'cpp',
             'c_std=c11',
             'buildtype=release',
         ])
+
+rpicam_java_src = []
 
 cpp_arguments = ['-pedantic', '-Wno-unused-parameter', '-faligned-new']
 
@@ -28,28 +30,34 @@ elif neon == 'armv8-neon'
     cpp_arguments += ['-mfpu=neon-fp-armv8', '-ftree-vectorize']
 endif
 
-dl_dep = dependency('dl', required : true)
 libcamera_dep = dependency('libcamera', required : true)
-rpicam_java_dep = dependency('libcamera_app', required: true)
+libcamera_app_dep = cxx.find_library('camera_app', required : true)
+boost_dep = dependency('boost', modules : ['program_options'], required : true)
+
+libcamera_app_lib_dir = '/usr/local/lib/aarch64-linux-gnu'
+libcamera_app_header_dir = '/usr/local/include/rpicam-apps' 
+libcamera_app_lib = 'libcamera_app'
 
 summary({
-            'location' : libcamera_dep.get_variable('libdir'),
-            'version' : libcamera_dep.version()
+            'libcamera location' : libcamera_dep.get_variable('libdir'),
+            'libcamera version' : libcamera_dep.version(),
+            'libcamera_app location' : libcamera_app_lib_dir,
         },
-        section : 'libcamera')
+        section : 'libraries')
 
 subdir('lib')
 subdir ('output')
 
 add_project_arguments(cpp_arguments, language : 'cpp')
 
-rpicam_stream = library(
+rpicam_java = library(
     'rpicam_java',
     rpicam_java_src,
+    build_rpath : libcamera_app_lib_dir,
+    install_rpath : libcamera_app_lib_dir,
     soversion : meson.project_version(),
-    include_directories : include_directories('.'),
+    include_directories : [ include_directories('.'), include_directories(libcamera_app_header_dir) ],
     install : true,
-    link_with: libcamera_app,
     name_prefix : '',
-    dependencies : rpicam_java_dep,
+    dependencies : [libcamera_app_dep, libcamera_dep, boost_dep],
 )

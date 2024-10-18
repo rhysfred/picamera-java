@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "output.hpp"
+#include "output/output.hpp"
 
 class JavaOutput : public Output
 {

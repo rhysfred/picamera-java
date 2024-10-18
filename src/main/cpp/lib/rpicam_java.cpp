@@ -13,7 +13,7 @@
 
 #include "core/rpicam_encoder.hpp"
 #include "output/output.hpp"
-#include "rpicam_stream.hpp"
+#include "rpicam_java.hpp"
 
 using namespace std::placeholders;
 
