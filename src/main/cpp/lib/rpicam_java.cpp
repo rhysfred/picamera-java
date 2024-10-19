@@ -56,12 +56,13 @@ static int get_colourspace_flags(std::string const &codec)
 
 // The main event loop for the application.
 
-static void event_loop(RPiCamEncoder &app)
+static void event_loop(RPiCamEncoder &app, boolean (*f)(void *, size_t))
 {
 	VideoOptions const *options = app.GetOptions();
-	std::unique_ptr<Output> output = std::unique_ptr<Output>(Output::Create(options));
+	//std::unique_ptr<Output> output = std::unique_ptr<Output>(Output::Create(options));
+	std::unique_ptr<Output> output = std::unique_ptr<Output>(JavaOutput::JavaOutput(options, f));
 	app.SetEncodeOutputReadyCallback(std::bind(&Output::OutputReady, output.get(), _1, _2, _3, _4));
-	app.SetMetadataReadyCallback(std::bind(&Output::MetadataReady, output.get(), _1));
+	//app.SetMetadataReadyCallback(std::bind(&Output::MetadataReady, output.get(), _1));
 
 	app.OpenCamera();
 	app.ConfigureVideo(get_colourspace_flags(options->codec));
@@ -75,7 +76,7 @@ static void event_loop(RPiCamEncoder &app)
 		RPiCamEncoder::Msg msg = app.Wait();
 		if (msg.type == RPiCamApp::MsgType::Timeout)
 		{
-			LOG_ERROR("ERROR: Device timeout detected, attempting a restart!!!");
+			LOG_ERROR("Restarting rpicam device");
 			app.StopCamera();
 			app.StartCamera();
 			continue;
@@ -88,7 +89,7 @@ static void event_loop(RPiCamEncoder &app)
 		LOG(2, "Viewfinder frame " << count);
 		if (signal_received == SIGPIPE)
 		{
-			app.StopCamera(); // stop complains if encoder very slow to close
+			app.StopCamera();
 			app.StopEncoder();
 			return;
 		}
@@ -99,10 +100,13 @@ static void event_loop(RPiCamEncoder &app)
 	}
 }
 
-void startStream()
+void start_stream(boolean (*f)(void *, size_t))
 {
+
+	// dummy, just to get compiling for the moment
 	int argc = 1;
 	char *argv[1];
+	// end dummy
 	try
 	{
 		RPiCamEncoder app;
@@ -112,7 +116,7 @@ void startStream()
 			if (options->verbose >= 2)
 				options->Print();
 
-			event_loop(app);
+			event_loop(app, f);
 		}
 	}
 	catch (std::exception const &e)
@@ -122,26 +126,3 @@ void startStream()
 	}
 	return;
 }
-
-/*
-static void outputReady(void *mem, size_t size, int64_t timestamp_us, bool keyframe)
-{
-	// When output is enabled, we may have to wait for the next keyframe.
-	uint32_t flags = keyframe ? FLAG_KEYFRAME : FLAG_NONE;
-	if (!enable_)
-		state_ = DISABLED;
-	else if (state_ == DISABLED)
-		state_ = WAITING_KEYFRAME;
-	if (state_ == WAITING_KEYFRAME && keyframe)
-		state_ = RUNNING, flags |= FLAG_RESTART;
-	if (state_ != RUNNING)
-		return;
-
-	// Frig the timestamps to be continuous after a pause.
-	if (flags & FLAG_RESTART)
-		time_offset_ = timestamp_us - last_timestamp_;
-	last_timestamp_ = timestamp_us - time_offset_;
-
-	outputBuffer(mem, size, last_timestamp_, flags);
-}
-*/
